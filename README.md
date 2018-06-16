@@ -1,4 +1,4 @@
-RDTpro
+bh_tools
 ======
 
 Extract RDT files
