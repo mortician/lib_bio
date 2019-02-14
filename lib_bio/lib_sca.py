@@ -40,10 +40,8 @@ class sca_object:
             self.z = 0       #int16;
             self.width = 0   #uint16;
             self.density = 0 #uint16;
-            self.id0 = 0     #byte;
-            self.id1 = 0     #byte;
-            self.type0 = 0   #byte;
-            self.type1 = 0   #byte;
+            self.id = 0      #uint16;
+            self.type = 0    #uint16;
             self.floor = 0   #uint32;
 
         if self.version == 3.0:
@@ -87,10 +85,8 @@ class sca_object:
             self.z = int(struct.unpack("h", file.read(2))[0])
             self.width = int(struct.unpack("H", file.read(2))[0])
             self.density = int(struct.unpack("H", file.read(2))[0])
-            self.id0 = int(struct.unpack("B", file.read(1))[0])
-            self.id1 = int(struct.unpack("B", file.read(1))[0])
-            self.type0 = int(struct.unpack("B", file.read(1))[0])
-            self.type1 = int(struct.unpack("B", file.read(1))[0])
+            self.id = int(struct.unpack("H", file.read(2))[0])
+            self.type = int(struct.unpack("H", file.read(2))[0])
             self.floor = int(struct.unpack("L", file.read(4))[0])
             return self
 
@@ -99,12 +95,10 @@ class sca_object:
             self.z1 = int(struct.unpack("h", file.read(2))[0])
             self.x2 = int(struct.unpack("h", file.read(2))[0])
             self.z2 = int(struct.unpack("h", file.read(2))[0])
-            self.type = int(struct.unpack("B", file.read(1))[0])
+            self.id = int(struct.unpack("H", file.read(2))[0])
+            self.type = int(struct.unpack("H", file.read(2))[0])
             self.u0 = int(struct.unpack("B", file.read(1))[0])
             self.u1 = int(struct.unpack("B", file.read(1))[0])
-            self.u2 = int(struct.unpack("B", file.read(1))[0])
-            self.u3 = int(struct.unpack("B", file.read(1))[0])
-            self.u4 = int(struct.unpack("B", file.read(1))[0])
             self.floor = int(struct.unpack("h", file.read(2))[0])
             return self
 
@@ -134,10 +128,8 @@ class sca_object:
             file.write(struct.pack('h', int(self.z)))
             file.write(struct.pack('H', int(self.width)))
             file.write(struct.pack('H', int(self.density)))
-            file.write(struct.pack('B', int(self.id0)))
-            file.write(struct.pack('B', int(self.id1)))
-            file.write(struct.pack('B', int(self.type0)))
-            file.write(struct.pack('B', int(self.type1)))
+            file.write(struct.pack('H', int(self.id)))
+            file.write(struct.pack('H', int(self.type)))
             file.write(struct.pack('L', int(self.floor)))
 
         if self.version == 3.0:
@@ -145,12 +137,10 @@ class sca_object:
             file.write(struct.pack('h', int(self.z1)))
             file.write(struct.pack('h', int(self.x2)))
             file.write(struct.pack('h', int(self.z2)))
-            file.write(struct.pack('B', int(self.type)))
+            file.write(struct.pack('H', int(self.id)))
+            file.write(struct.pack('H', int(self.type)))
             file.write(struct.pack('B', int(self.u0)))
             file.write(struct.pack('B', int(self.u1)))
-            file.write(struct.pack('B', int(self.u2)))
-            file.write(struct.pack('B', int(self.u3)))
-            file.write(struct.pack('B', int(self.u4)))
             file.write(struct.pack('h', int(self.floor)))
 
 class sca_file:

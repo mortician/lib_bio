@@ -25,6 +25,7 @@ import os
 import struct
 import lib_bio.lib_rdt as lib_rdt
 import lib_bio.lib_rid as lib_rid
+import lib_bio.lib_sca as lib_sca
 import lib_bio.lib_tools as lib_tools
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
@@ -75,29 +76,31 @@ def get_obj_count(tag, max_count):
 # CREATING FUNCTIONS...
 #=======================================================================================================================
 def create_material(name, diffuse, specular, alpha):
-	mat = bpy.data.materials.new(name)
-	mat.diffuse_color = diffuse
-	mat.diffuse_shader = 'LAMBERT'
-	mat.diffuse_intensity = 1.0
-	mat.specular_color = specular
-	mat.specular_intensity = 0.5
-	mat.ambient = 1
-	mat.alpha = alpha
+	
+	if bpy.data.materials.get(name) is None:
+		mat = bpy.data.materials.new(name)
+		mat.diffuse_color = diffuse
+		mat.diffuse_shader = 'LAMBERT'
+		mat.diffuse_intensity = 1.0
+		mat.specular_color = specular
+		mat.specular_intensity = 0.5
+		mat.ambient = 1
+		mat.alpha = alpha
 
-	if mat.alpha < 1.0:
-		mat.use_transparency = True
+		if mat.alpha < 1.0:
+			mat.use_transparency = True
 
 	return mat
 
 def create_camera(index, x, y, z, target_x, target_y, target_z, fov):
-	cam = bpy.data.cameras.new('CAM_' + lib_tools.fix_id(index))
-	cam_ob = bpy.data.objects.new('CAM_' + lib_tools.fix_id(index), cam)
+	cam = bpy.data.cameras.new('RID_' + lib_tools.fix_id(index))
+	cam_ob = bpy.data.objects.new('RID_' + lib_tools.fix_id(index), cam)
 	bpy.context.scene.objects.link(cam_ob)
 
 	cam_ob.location = (x, z, y)
 	cam_ob.data.lens = fov
 
-	empty = bpy.data.objects.new('CAM_' + lib_tools.fix_id(index) + '_AIM', None)
+	empty = bpy.data.objects.new('RID_' + lib_tools.fix_id(index) + '_AIM', None)
 	bpy.context.scene.objects.link(empty)
 	empty.location = (target_x, target_z, target_y)
 	empty.select = True
@@ -263,7 +266,7 @@ def create_prism(tag, index, x, y, z, width, height, density, direction):
 			(1, 2, 5, 4),
 			(0, 3, 5, 2)]
 
-	#triangle based prism "ramp" 101 or 106
+	#Slope going down from south to north
 	if direction == 'SN':
 		verts = [
 			(x + width, z + density, y),
@@ -280,7 +283,7 @@ def create_prism(tag, index, x, y, z, width, height, density, direction):
 			(2, 5, 3),
 			(0, 4, 1)]
 			
-	#triangle based prism "ramp" 101 or 106
+	#Slope going down from north to south 
 	if direction == 'NS':
 		verts = [
 			(x + width, z + density, y),
@@ -297,7 +300,7 @@ def create_prism(tag, index, x, y, z, width, height, density, direction):
 			(2, 5, 3),
 			(0, 4, 1)]
 			
-	#triangle based prism "ramp" 
+	#Slope going down from east to west 
 	if direction == 'EW':
 		verts = [
 			(x + width, z + density, y),
@@ -314,7 +317,7 @@ def create_prism(tag, index, x, y, z, width, height, density, direction):
 			(2, 1, 5),
 			(0, 3, 4)]
 			
-	#triangle based prism "ramp" 
+	#Slope going down from west to east 
 	if direction == 'WE':
 		verts = [
 			(x + width, z + density, y),
@@ -331,7 +334,7 @@ def create_prism(tag, index, x, y, z, width, height, density, direction):
 			(2, 1, 5),
 			(0, 3, 4)]
 
-	#quadrangle based prism? "<>": 133
+	#<>
 	if direction == 'NESW':
 		verts = [
 			(x + (width / 2), z + density, y),
@@ -437,13 +440,13 @@ def import_rvd(data):									   #MISSING BIO1 SUPPORT ATM
 					y = 0
 
 				if data.object[i].cam_0 != current_cam:
-					name = 'CAM_' + lib_tools.fix_id(data.object[i].cam_0) + '_ZONE'
+					name = 'RVD_' + lib_tools.fix_id(data.object[i].cam_0) + '_ZONE'
 					mat = bpy.data.materials.get('MTL_RVD_ZONE')
 					current_cam = data.object[i].cam_0
 					switch_id = 0
 
 				else:
-					name = 'CAM_' + lib_tools.fix_id(data.object[i].cam_0) + '_SWITCH_' + lib_tools.fix_id(switch_id)
+					name = 'RVD_' + lib_tools.fix_id(data.object[i].cam_0) + '_SWITCH_' + lib_tools.fix_id(switch_id)
 					mat = bpy.data.materials.get('MTL_RVD_SWITCH')
 					switch_id += 1
 
@@ -530,7 +533,7 @@ def import_lit(data):	#missing BIO3!
 																			 float(-data.object[i].position[0].y) / v_scale), layers=(False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
 
 				bpy.context.object.name = 'LIT_' + lib_tools.fix_id(i) + '_00'
-				bpy.context.object.data.energy = data.object[i].luminosity[0]
+				bpy.context.object.data.energy = data.object[i].luminosity[0] / v_scale
 				bpy.context.object.data.distance = 1
 				bpy.context.object.data.color = (data.object[i].color[0].r/255, data.object[i].color[0].g/255, data.object[i].color[0].b/255)			
 				bpy.ops.object.group_link(group='LIT_' + lib_tools.fix_id(i))
@@ -541,7 +544,7 @@ def import_lit(data):	#missing BIO3!
 																			 float(-data.object[i].position[1].y) / v_scale), layers=(False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
 				
 				bpy.context.object.name = 'LIT_' + lib_tools.fix_id(i) + '_01'
-				bpy.context.object.data.energy = data.object[i].luminosity[1]
+				bpy.context.object.data.energy = data.object[i].luminosity[1] / v_scale
 				bpy.context.object.data.distance = 1
 				bpy.context.object.data.color = (data.object[i].color[1].r/255, data.object[i].color[1].g/255, data.object[i].color[1].b/255)
 				bpy.ops.object.group_link(group='LIT_' + lib_tools.fix_id(i))
@@ -552,7 +555,7 @@ def import_lit(data):	#missing BIO3!
 																			 float(-data.object[i].position[2].y) / v_scale), layers=(False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
 				
 				bpy.context.object.name = 'LIT_' + lib_tools.fix_id(i) + '_02'
-				bpy.context.object.data.energy = data.object[i].luminosity[2]
+				bpy.context.object.data.energy = data.object[i].luminosity[2] / v_scale
 				bpy.context.object.data.distance = 1
 				bpy.context.object.data.color = (data.object[i].color[2].r/255, data.object[i].color[2].g/255, data.object[i].color[2].b/255)
 				bpy.ops.object.group_link(group='LIT_' + lib_tools.fix_id(i))
@@ -565,20 +568,31 @@ def import_sca(data):
 	print('[IO_RDT]  <IMPORT> SCA ' + str(data.version))
 
 	if len(data.object) > 0:
-		if bpy.data.materials.get('MTL_SCA') is None:
-			mat = create_material('MTL_SCA', (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), 0.25)
-
-		else:
-			mat = bpy.data.materials.get('MTL_SCA')
+ 		#Create materials...
+		create_material('MTL_SCA_Cube', (1.0, 1.0, 1.0), (1.0, 1.0, 1.0), 0.25)
+		create_material('MTL_SCA_Cylinder', (0.0, 0.5, 0.0), (1.0, 1.0, 1.0), 0.25)
+		create_material('MTL_SCA_Prism', (0.0, 0.5, 0.0), (1.0, 1.0, 1.0), 0.25)
+		create_material('MTL_SCA_Diamond', (0.5, 0.5, 0.5), (1.0, 1.0, 1.0), 0.25)
+		create_material('MTL_SCA_Slope', (0.5, 1.0, 0.5), (1.0, 1.0, 1.0), 0.50)
+		create_material('MTL_SCA_Stairs', (1.0, 1.0, 0.0), (1.0, 1.0, 1.0), 0.50)
+		create_material('MTL_SCA_Climb_up', (0.0, 1.0, 0.0), (1.0, 1.0, 1.0), 0.50)
+		create_material('MTL_SCA_Climb_down', (0.0, 0.8, 0.0), (1.0, 1.0, 1.0), 0.50)
+		create_material('MTL_SCA_Half_cylinder', (0.0, 1.0, 0.0), (1.0, 1.0, 1.0), 0.25)
 
 		#Create ceiling object...
 		if data.version == 1.0 or data.version == 1.5:
 			print('N/A')
 		if data.version == 2.0:
-			create_plane("SCA_CEILING", 0, data.ceiling_x / v_scale, data.ceiling_z/ v_scale, data.ceiling_y/ v_scale, data.ceiling_width/ v_scale, data.ceiling_density/ v_scale )
+			create_plane("SCA_CEILING", 0, data.ceiling_x / v_scale, -(data.ceiling_z/ v_scale), data.ceiling_y/ v_scale, data.ceiling_width/ v_scale, data.ceiling_density/ v_scale )
+
+			obj = bpy.data.objects.get('SCA_CEILING00')
+			obj.name = "SCA_CEILING"
+			obj.data.name = "SCA_CEILING"
+
 		if data.version == 3.0:
 			print('N/A')
 
+		#Create objects...
 		for i in range(len(data.object)):		
 			#==================================================================================================================
 			#BIO HAZARD
@@ -635,7 +649,7 @@ def import_sca(data):
 				density = float(data.object[i].density) / v_scale
 				shape = data.object[i].type
 
-				#0 - Unassigned/placeholder?
+				#0 - Empty (Placeholder for script use)
 				if shape == 0:
 					create_cube('SCA_', i, x, y, z, width, height, density)
 
@@ -667,11 +681,11 @@ def import_sca(data):
 				if shape == 7:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'SW')
 
-				#8 - Rounded corners?
+				#8 - Rectangle with rounded corners on x-axis
 				if shape == 8:
 					create_cylinder('SCA_', i, x, y, z, width, height, density)
 
-				#9 - Rounded corners?
+				#9 - Rectangle with rounded corners on y-axis
 				if shape == 9:
 					create_cylinder('SCA_', i, x, y, z, width, height, density)
 				
@@ -690,21 +704,29 @@ def import_sca(data):
 			#BIOHAZARD 2
 			#==================================================================================================================
 			if data.version == 2.0:
-				id_shape = int((lib_tools.byte_to_bits(data.object[i].id0)[-4:]),2)
-				id_weapon_collision = int((lib_tools.byte_to_bits(data.object[i].id0)[:4]),2)
-				
-				id_can_walk_under = 0
-				id_unknown_0 = 0
-				id_enemy_collision = 0
-				id_unknown_0 = 0
-				id_unknown_1 = 0
-				id_bullet_collision = 0
-				id_object_collision = 0
-				id_player_collision = 0
 
-				sca_type = int(lib_tools.byte_to_bits(data.object[i].id0), 2)
-				sca_type2 = int(lib_tools.byte_to_bits(data.object[i].id1), 2)
-				
+				#Prepare bitmask data for later use as properties
+				b_id = bin(data.object[i].id).replace('0b','').zfill(16)
+				b_typ = bin(data.object[i].type).replace('0b','').zfill(16)
+				b_floor = bin(data.object[i].floor).replace('0b','').zfill(32)
+
+				id_shape = int(b_id[12:16], 2)
+				id_weapon_collision = int(b_id[8:12], 2)				
+				id_can_walk_under = int(b_id[7], 2)
+				id_unknown_0 = int(b_id[7], 2)
+				id_enemy_collision = int(b_id[6], 2)
+				id_unknown_1 = int(b_id[5], 2)
+				id_unknown_2 = int(b_id[4], 2)
+				id_bullet_collision = int(b_id[3], 2)
+				id_object_collision = int(b_id[2], 2)
+				id_player_collision = int(b_id[1], 2)
+
+				type_width_multiplicator = int(b_typ[14:16], 2)
+				type_depth_multiplicator = int(b_typ[12:14], 2)
+				type_climb_direction = int(b_typ[10:12], 2)
+				type_height_multiplicator = int(b_typ[4:10], 2)
+				type_dummy_9 = int(b_typ[0:4], 2)
+
 				y_data = calc_y_data(data.object[i].floor)
 				x = float(data.object[i].x) / v_scale
 				y = y_data[0]
@@ -716,88 +738,150 @@ def import_sca(data):
 				#Standard rectangle/cube
 				if id_shape == 0:
 					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
 				
 				#Prism |\ 
 				if id_shape == 1:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'NE')
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
 				
 				#Prism /|
 				if id_shape == 2:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'NW')
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
 
 				#Prism |/
 				if id_shape == 3:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'SE')
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
 
 				#Prism \|
 				if id_shape == 4:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'SW')
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
 
 				#Prism <>
 				if id_shape == 5:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'NESW')
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
 
 				#Cylinder/Circle/Pillar
 				if id_shape == 6:
 					y = y_data[0]
-					height = y_data[0] + y_data[1]
-					create_cylinder('SCA_', i, x, y, z, width, height / 2, density)
-					
-				#Rectangle (unconfirmed)
+					#height = y_data[0] + y_data[1]
+					heigth = type_height_multiplicator * 1.8
+					create_cylinder('SCA_', i, x, y, z, width, (y_data[0]) + ((type_height_multiplicator * 1.8)), density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cylinder'))
+
+				#Rectangle with rounded corners on x-axis
 				if id_shape == 7:						
 					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
 				
-				#Rectangle (unconfirmed)
+				#Rectangle with rounded corners on y-axis
 				if id_shape == 8:						
 					create_cube('SCA_', i, x, y, z, width, height, density)
-					
-				#Climb up area
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
+
+				#Rectangle "Climb up area"
 				if id_shape == 9:						
 					create_cube('SCA_', i, x, y, z, width, height, density)
-				
-				#Climb down area
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Climb_up'))
+
+				#Rectangle "Climb down area"
 				if id_shape == 10:						
 					create_cube('SCA_', i, x, y, z, width, height, density)	
-								
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Climb_down'))
+					
 				#Slope
 				if id_shape == 11:
-					bitmask = lib_tools.byte_to_bits(data.object[i].type0)[0:4]
-				
-					if bitmask == '0110':
-						create_prism('SCA_', i, x, y, z, width, height, density, 'SN')
+									
+					if type_climb_direction == 0:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'WE')	
+
+					if type_climb_direction == 1:	
+						create_prism('SCA_', i, x, y, z, width, height, density, 'EW')						
 					
-					if bitmask == '0101':	
-						create_prism('SCA_', i, x, y, z, width, height, density, 'EW')
+					if type_climb_direction == 2:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'SN')
 				
-					if bitmask == '1011' or bitmask == '0111':
+					if type_climb_direction == 3:
 						create_prism('SCA_', i, x, y, z, width, height, density, 'NS')
 
-				#Stairs
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Slope'))
+
+				#Rectangle "Stairs"
 				if id_shape == 12:
 					height -= 1.8
 					create_cube('SCA_', i, x, y, z, width, height, density)
-				
-				#Half cylinder? (only found in ROOM40B and ROOM40F
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Stairs'))
+
+				#Half cylinder? (only found in ROOM40B and ROOM40F	)
 				if id_shape == 13:						
 					create_cube('SCA_', i, x, y, z, width, height, density)					
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Half_cylinder'))
 				
-				#Last resort, create unknown shape as rectangle/cube
-				if bpy.data.objects.get('SCA_' + lib_tools.fix_id(i)) is None:
-					create_cube('SCA_', i, x, y, z, width, height, density)
-					
+				#ADD FAILSAFE AGAINST ILLEGAL SHAPE !	
+				bpy.data.objects['SCA_' + lib_tools.fix_id(i)].draw_type = 'SOLID'
+				bpy.data.objects['SCA_' + lib_tools.fix_id(i)].show_transparent = True
+				bpy.data.objects['SCA_' + lib_tools.fix_id(i)].show_wire = True
+				bpy.data.objects['SCA_' + lib_tools.fix_id(i)].show_name = True
+				
+				if id_weapon_collision == 8:
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].draw_type = 'SOLID'
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].show_transparent = False
+
 				#add object properties...
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_0_Shape"]=int((lib_tools.byte_to_bits(data.object[i].id0)[-4:]),2)
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_1_Weapon collision"]=int((lib_tools.byte_to_bits(data.object[i].id0)[:4]),2)
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_2_Can walk under"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_3_Unknown 0"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_4_Enemy collision"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_5_Unknown 1"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_6_Unknown 2"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_7_Bullet collision"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_8_Object collision"]=True
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_9_Player collision"]=True
-					
-				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Version"]=float(2)
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_0_Shape"]=id_shape
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_1_Weapon collision"]=id_weapon_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_2_Can walk under"]=id_can_walk_under
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_3_Unknown 0"]=id_unknown_0
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_4_Enemy collision"]=id_enemy_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_5_Unknown 1"]=id_unknown_1
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_6_Unknown 2"]=id_unknown_2
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_7_Bullet collision"]=id_bullet_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_8_Object collision"]=id_object_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_9_Player collision"]=id_player_collision
+				
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Type_0_Width multiplicator"]=type_width_multiplicator
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Type_1_Depth multiplicator"]=type_depth_multiplicator
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Type_2_Climb direction"]=type_climb_direction
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Type_3_Height multiplicator"]=type_height_multiplicator
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Type_4_Dummy 9"]=type_dummy_9
+				
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_00"]=b_floor[31]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_01"]=b_floor[30]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_02"]=b_floor[29]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_03"]=b_floor[28]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_04"]=b_floor[27]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_05"]=b_floor[26]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_06"]=b_floor[25]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_07"]=b_floor[24]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_08"]=b_floor[23]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_09"]=b_floor[22]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_10"]=b_floor[21]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_11"]=b_floor[20]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_12"]=b_floor[19]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_13"]=b_floor[18]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_14"]=b_floor[17]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_15"]=b_floor[16]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_16"]=b_floor[15]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_17"]=b_floor[14]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_18"]=b_floor[13]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_19"]=b_floor[12]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_20"]=b_floor[11]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_21"]=b_floor[10]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_22"]=b_floor[9]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_23"]=b_floor[8]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_24"]=b_floor[7]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_25"]=b_floor[6]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_26"]=b_floor[5]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_27"]=b_floor[4]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_28"]=b_floor[3]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_29"]=b_floor[2]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_30"]=b_floor[1]
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor_31"]=b_floor[0]
+
 
 			#==================================================================================================================
 			#BIOHAZARD 3 LAST ESCAPE
@@ -809,40 +893,170 @@ def import_sca(data):
 				width = float(data.object[i].x2 - data.object[i].x1) / v_scale
 				height = (float(-data.object[i].floor) / v_scale) - y
 				density = float(data.object[i].z2 - data.object[i].z1) / v_scale
-				sca_type = data.object[i].type
+				
+				#Prepare bitmask data for later use as properties
+				b_id = bin(data.object[i].id).replace('0b','').zfill(16)
+				b_typ = bin(data.object[i].type).replace('0b','').zfill(16)
+				b_floor = bin(data.object[i].floor).replace('0b','').zfill(16)
+				
+				id_shape = int(b_id[12:16], 2)
+				id_direction = int(b_id[10:12], 2)
+				id_weapon_collision = int(b_id[8:10], 2)				
+				id_can_walk_under = int(b_id[7], 2)
+				id_unknown_0 = int(b_id[7], 2)
+				id_enemy_collision = int(b_id[6], 2)
+				id_unknown_1 = int(b_id[5], 2)
+				id_unknown_2 = int(b_id[4], 2)
+				id_bullet_collision = int(b_id[3], 2)
+				id_object_collision = int(b_id[2], 2)
+				id_player_collision = int(b_id[1], 2)
 
 				#R101	106 med stairs   (8 step)
 				#R101	122 small stairs (4 step)
-
-				if sca_type == 41 or sca_type == 105:
-					create_prism('SCA_', i, x, y, z, width, height, density, 'SN')
-
-				if sca_type == 64:
+				
+				#Cylinders...
+				if id_shape == 0:
 					create_cylinder('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cylinder'))
 
-				if sca_type == 65:
+				#Cubes...
+				if id_shape == 1:
 					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
 
-				if sca_type == 54 or sca_type == 118 or sca_type == 246:
-					create_prism('SCA_', i, x, y, z, width, height, density, 'SW')
+				#2		 <> ?
+				if id_shape == 2:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
 
-				if sca_type == 6 or sca_type == 70:
-					create_prism('SCA_', i, x, y, z, width, height, density, 'NE')
+				#Prism \|
+				if id_shape == 3:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
 
-				if sca_type == 22 or sca_type == 86 or sca_type == 214:
+				#Prism |\
+				if id_shape == 4:
+					if id_direction == 0:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'NE')
+
+					if id_direction == 1:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'NW')
+						
+					if id_direction == 2:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'SE')
+						
+					if id_direction == 3:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'SW')
+				#5
+				if id_shape == 5:
 					create_prism('SCA_', i, x, y, z, width, height, density, 'NW')
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
 
-				if sca_type == 38 or sca_type == 102:
-					create_prism('SCA_', i, x, y, z, width, height, density, 'SE')
+				#Prisms... \|
+				if id_shape == 6:
+					if id_direction == 0:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'NE')
+
+					if id_direction == 1:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'NW')
+						
+					if id_direction == 2:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'SE')
+						
+					if id_direction == 3:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'SW')
+
+						
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Prism'))
+
+				#7 // Climb up zone
+				if id_shape == 7:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Climb_up'))
+
+				#8 // Climb down zone
+				if id_shape == 8:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Climb_down'))
+
+				#Slopes...
+				if id_shape == 9:
+					
+					if id_direction == 0:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'WE')
+					
+					if id_direction == 1:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'EW')
+						
+					if id_direction == 2:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'SN')
+
+					if id_direction == 3:
+						create_prism('SCA_', i, x, y, z, width, height, density, 'NS')
+						
+						
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Slope'))
+
+					#ROOM500 #11 N>S
+
+				#Stairs
+				if id_shape == 10:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Stairs'))
+
+ 				#11
+				if id_shape == 11:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
+
+				#12
+				if id_shape == 12:
+					create_cube('SCA_', i, x, y, z, width, height, density)
+					bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_Cube'))
+
+				#if sca_type == 54 or sca_type == 118 or sca_type == 246:
+				#	create_prism('SCA_', i, x, y, z, width, height, density, 'SW')
+
+				#Prism NE
+
+
+				#if id_shape == 22 or sca_type == 86 or sca_type == 214:
+				#	create_prism('SCA_', i, x, y, z, width, height, density, 'NW')
+
+				#if id_shape == 38 or sca_type == 102:
+				#	create_prism('SCA_', i, x, y, z, width, height, density, 'SE')
 
 				if bpy.data.objects.get('SCA_' + lib_tools.fix_id(i)) is None:
 					create_cube('SCA_', i, x, y, z, width, height, density)
+		  		
+				#add object properties...
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_0_Shape"]=id_shape
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_0_Direction"]=id_direction
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_1_Weapon collision"]=id_weapon_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_2_Can walk under"]=id_can_walk_under
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_3_Unknown 0"]=id_unknown_0
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_4_Enemy collision"]=id_enemy_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_5_Unknown 1"]=id_unknown_1
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_6_Unknown 2"]=id_unknown_2
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_7_Bullet collision"]=id_bullet_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_8_Object collision"]=id_object_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["ID_9_Player collision"]=id_player_collision
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Type"]=data.object[i].type
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["u0"]=data.object[i].u0
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["u1"]=data.object[i].u1
+				bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Floor"]=float(-data.object[i].floor)
+		
 
-			bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(mat)
+
+			if (len(bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials) == 0):
+				bpy.data.objects['SCA_' + lib_tools.fix_id(i)].data.materials.append(bpy.data.materials.get('MTL_SCA_00'))
+
+			
+
 			bpy.data.objects['SCA_' + lib_tools.fix_id(i)].show_wire = True
 			bpy.data.objects['SCA_' + lib_tools.fix_id(i)].show_transparent = True
 			bpy.data.objects['SCA_' + lib_tools.fix_id(i)].draw_type = 'SOLID'
-
+			#bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))["Version"]=data.version
 	else:
 		print('!!! ERROR: NO OBJECTS AVAILABLE')
 
@@ -993,6 +1207,9 @@ def import_rdt(context, filepath):
 
 	return {'FINISHED'}
 
+def import_scd_main():
+	print('[IO_RDT]  <IMPORT> SCD_MAIN ')
+
 #=======================================================================================================================
 # EXPORT FUNCTIONS...
 #=======================================================================================================================
@@ -1002,7 +1219,7 @@ def export_rid(filepath, version):
 	print('=' * 64)
 
 	#get total object amount...
-	obj_count = get_obj_count('CAM_', 64)
+	obj_count = get_obj_count('RID_', 64)
 	
 	if obj_count > 0:
 		print('FOUND OBJECT COUNT: ' + str(obj_count))
@@ -1014,64 +1231,99 @@ def export_rid(filepath, version):
 			
 			tmp_rid_obj = lib_rid.rid_object(version)
 
-			if bpy.data.objects.get('CAM_' + lib_tools.fix_id(i)) is not None and bpy.data.objects.get('CAM_' + lib_tools.fix_id(i) + '_AIM') is not None:	
+			if bpy.data.objects.get('RID_' + lib_tools.fix_id(i)) is not None and bpy.data.objects.get('RID_' + lib_tools.fix_id(i) + '_AIM') is not None:	
 				
-				cam_obj = bpy.data.objects.get('CAM_' + lib_tools.fix_id(i))
-				cam_target_obj = bpy.data.objects.get('CAM_' + lib_tools.fix_id(i) + '_AIM')
+				cam_obj = bpy.data.objects.get('RID_' + lib_tools.fix_id(i))
+				cam_target_obj = bpy.data.objects.get('RID_' + lib_tools.fix_id(i) + '_AIM')
 			
-				tmp_rid_obj.fov = int((round(cam_obj.data.lens, 5) + float(6)) * v_scale)
-				tmp_rid_obj.x = int(cam_obj.location[0] * v_scale) 
-				print(str(i) + str(tmp_rid_obj.fov))
-				tmp_rid_obj.z = int(cam_obj.location[1] * v_scale)
-				tmp_rid_obj.y = int(cam_obj.location[2] * v_scale)
-				tmp_rid_obj.target_x = int(cam_target_obj.location[0] * v_scale)
-				tmp_rid_obj.target_z = int(cam_target_obj.location[1] * v_scale)
-				tmp_rid_obj.target_y = int(cam_target_obj.location[2] * v_scale)
+				if version == 1.0:
+					tmp_rid_obj.fov = int((round(cam_obj.data.lens, 5) + float(6)) * v_scale)
+					tmp_rid_obj.x = int(cam_obj.location[0] * v_scale) 
+					tmp_rid_obj.z = int(cam_obj.location[1] * v_scale)
+					tmp_rid_obj.y = int(cam_obj.location[2] * v_scale)
+					tmp_rid_obj.target_x = int(cam_target_obj.location[0] * v_scale)
+					tmp_rid_obj.target_z = int(cam_target_obj.location[1] * v_scale)
+					tmp_rid_obj.target_y = int(cam_target_obj.location[2] * v_scale)
+					tmp_rid_obj.o_tim = 0xFFFFFFFF
+					tmp_rid_obj.o_pri = 0xFFFFFFFF
+
+				if version == 1.5 or version == 2.0 or version == 3.0:
+					tmp_rid_obj.fov = int((round(cam_obj.data.lens, 5) + float(6)) * v_scale)
+					tmp_rid_obj.x = int(round(cam_obj.location[0] * v_scale))
+					print(str(i) + ' _ ' + str(tmp_rid_obj.fov))
+					tmp_rid_obj.z = int(round(cam_obj.location[1] * v_scale))
+					tmp_rid_obj.y = -int(round(cam_obj.location[2] * v_scale))
+					tmp_rid_obj.target_x = int(round(cam_target_obj.location[0] * v_scale))
+					tmp_rid_obj.target_z = int(round(cam_target_obj.location[1] * v_scale))
+					tmp_rid_obj.target_y = int(round(cam_target_obj.location[2] * v_scale))
+					tmp_rid_obj.o_pri = 0xFFFFFFFF
+
+					if i == obj_count-1:
+						tmp_rid_obj.flag = 1
 
 				tmp_rid.object.append(tmp_rid_obj)
 		
 		print(str(len(tmp_rid.object)))
 		tmp_rid.write_to_file(filepath)
 
-
-			#print(str(i) + "\tfov: (" + str(fov) + ") x: (" + str(x) + ") y: (" + str(y) + ") z: (" + str(z))
-			#else:
-			#	print('!!! MISSING OBJECT: SCA_' + lib_tools.fix_id(i) + ' --- WILL BE FILLED BY A DUMMY PLACEHOLDER !!!')
-
-def export_sca(filepath):	
+def export_sca(filepath, version):	
 	print('=' * 64)
 	print('SCA EXPORT')
 	print('=' * 64)
 	
 	#orientation point lower left corner!
-	v_scale = float(1000)
-	
+
+	tmp_sca = lib_sca.sca_file(version)
+
 	#get ceiling data...
 	if bpy.data.objects.get('SCA_CEILING') is not None:
-		#missing yet
-		print("Getting ceiling data...")
+		obj = bpy.data.objects.get('SCA_CEILING')
+
+		if version == 1.0:
+			print('Ceiling of BIO1 SCA not implemented yet')
+
+		if version == 2.0:
+			print("Getting ceiling data...")
+			tmp_sca.ceiling_x = int(round(obj.location[0] * v_scale))
+			tmp_sca.ceiling_y = int(round(obj.location[2] * v_scale))
+			tmp_sca.ceiling_z = int(round(obj.location[1] * v_scale))
+			tmp_sca.ceiling_density = int(round(obj.dimensions[0] * v_scale))
+			tmp_sca.ceiling_width = int(round(obj.dimensions[1] * v_scale))
+
+			
 	else:
-		print("!!! CEILING IS MISSING --- WILL USE DUMMY PLACEHOLDE !!!")
-	
+		print("!!! CEILING IS MISSING --- WILL USE DUMMY PLACEHOLDER !!!")
+
 	#get total object amount...
 	obj_count = get_obj_count('SCA_', 64)
-				
+	
+	tmp_sca.count = obj_count + 1
+
 	print('FOUND OBJECT COUNT: ' + str(obj_count))
 	
 	for i in range(obj_count):
+		
+		tmp_obj = lib_sca.sca_object(version)
+		
 		if bpy.data.objects.get('SCA_' + lib_tools.fix_id(i)) is not None:	
 			obj = bpy.data.objects.get('SCA_' + lib_tools.fix_id(i))
 	
-			x = int(obj.location[0] * v_scale) 
-			y = int(obj.location[1] * v_scale)
-			z = int(obj.location[2] * v_scale)
-			w = int(obj.dimensions[0] * v_scale)
-			d = int(obj.dimensions[1] * v_scale)
-			h = int(obj.dimensions[2] * v_scale)
+			if version == 2.0:
 
-			print(str(i) + "\tx: (" + str(x - int(w/2)) + ") y: (" + str(y - int(d/2)) + ") w: (" + str(w) + ") d: (" + (str(d) + ')'))
+				tmp_obj.floor = int(round(obj.location[2] * v_scale))	   #needs fixing, isn't handling floor bit sets yet...
+				tmp_obj.width  = int(round(obj.dimensions[0] * v_scale)) 
+				tmp_obj.density  = int(round(obj.dimensions[1] * v_scale))
+				tmp_obj.x = int(round(obj.location[0] * v_scale)) - int(tmp_obj.width / 2)
+				tmp_obj.z = int(round(obj.location[1] * v_scale)) - int(tmp_obj.density / 2)
+				#tmp_obj.id0 = int(obj["Shape"])
+				h = int(round(obj.dimensions[2] * v_scale))
+
+			tmp_sca.object.append(tmp_obj)
+			#print(str(i) + "\tx: (" + str(x - int(w/2)) + ") y: (" + str(y - int(d/2)) + ") w: (" + str(w) + ") d: (" + (str(d) + ')'))
 		else:
 			print('!!! MISSING OBJECT: SCA_' + lib_tools.fix_id(i) + ' --- WILL BE FILLED BY A DUMMY PLACEHOLDER !!!')
+
+	tmp_sca.write_to_file(filepath)
 
 def export_rdt(context, filepath):
 	print('\n' + ("=" * 96) + '\n')
@@ -1101,23 +1353,28 @@ def export_rdt(context, filepath):
 
 	print('WIP_DIR ' + wip_dir)
 
+	#Export data...
 	if (os.path.isdir(wip_dir)):
 		print('WIP DIR EXISTS! ' + dir_selected + '/WIP/' + tmp_rdt_org_name + '/')
 		
 		if os.path.exists(wip_dir + '/CAMERA') == False:
 			lib_tools.create_dir(wip_dir + '/CAMERA')
 
-		export_rid(wip_dir + '/CAMERA/CAMERAS.RID', 2.0)
+		export_rid(wip_dir + '/CAMERA/CAMERAS.RID', tmp_rdt_version)
 			#tmp_rdt.rvd = tmp_rdt.rvd.read_from_file(wip_dir + '/' + rdt_name + '/CAMERA/ZONES.RVD')
 			#tmp_rdt.lit = tmp_rdt.lit.read_from_file(wip_dir + '/' + rdt_name + '/CAMERA/LIGHTS.LIT')
-			#tmp_rdt.sca = tmp_rdt.sca.read_from_file(wip_dir + '/' + rdt_name + '/CAMERA/COLLISIONS.SCA')
+		export_sca(wip_dir + '/CAMERA/COLLISIONS.SCA', tmp_rdt_version)
 			#tmp_rdt.flr = tmp_rdt.flr.read_from_file(wip_dir + '/' + rdt_name + '/CAMERA/FLOORS.FLR')
 			#tmp_rdt.blk = tmp_rdt.blk.read_from_file(wip_dir + '/' + rdt_name + '/CAMERA/ROAMING.BLK')
+
+		#Now rebuild the RDT file...!
+		tmp_rdt = lib_rdt.rdt_file(tmp_rdt_version)
+		tmp_rdt.rebuild(wip_dir + '/' + tmp_rdt_org_name + '.RDT')
 	
 	return {'FINISHED'}
 
 #=======================================================================================================================
-# IMPORT OPERATOR...
+# OPERATORS...
 #=======================================================================================================================
 class rdt_import(Operator, ImportHelper):
 	"""This appears in the tooltip of the operator and in the generated docs"""
@@ -1209,9 +1466,104 @@ class rdt_export(Operator, ImportHelper):
 	def execute(self, context):
 		return export_rdt(context, self.filepath)
 
+class rdt_tools_sca_panel(bpy.types.Panel):
+	"""Creates a Panel in the Object properties window"""
+	bl_label = "RDT SCA"
+	bl_idname = "OBJECT_PT_hello"
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'TOOLS'
+	bl_context = "objectmode"
+	bl_category = 'RDT'
+
+	def draw(self, context):
+		layout = self.layout
+		split = layout.split()
+		obj = context.object
+
+		row = layout.row()
+		col = split.column(align=True)
+		col.operator("rdt_tools.button", text="Toogle data visibility").handle = 'toggle_vis_sca'
+		col.operator("rdt_tools.button", text="Toogle object names").handle = 'toggle_name_sca'
+		col.operator("rdt_tools.button", text="Toogle transparency").handle = 'toggle_transparency_sca'
+		col.label(text="Create object")
+		#col = split.column(align=True)
+		col.operator("rdt_tools.button", text="0 - Standard").handle = 'sca_shape_0'
+		col.operator("rdt_tools.button", text="1 - Triangle Upper-Left Corner").handle = 'sca_shape_1'
+		col.operator("rdt_tools.button", text="2 - Triangle Upper-Right Corner").handle = 'sca_shape_2'
+		col.operator("rdt_tools.button", text="3 - Triangle Lower-Left Corner").handle = 'sca_shape_3'
+		col.operator("rdt_tools.button", text="4 - Triangle Lower-Right Corner").handle = 'sca_shape_4'
+		col.operator("rdt_tools.button", text="5 - Diamond").handle = 'sca_shape_5'
+		col.operator("rdt_tools.button", text="6-  Cylinder").handle = 'sca_shape_6'
+		col.operator("rdt_tools.button", text="7 - Rectangle w. rounded corners x").handle = 'sca_shape_7'
+		col.operator("rdt_tools.button", text="8 - Rectangle w. rounded corners y").handle = 'sca_shape_8'
+		col.operator("rdt_tools.button", text="9 - Climb up area").handle = 'sca_shape_9'
+		col.operator("rdt_tools.button", text="10 - Climb down area").handle = 'sca_shape_10'
+		col.operator("rdt_tools.button", text="11 - Slope").handle = 'sca_shape_11'
+		col.operator("rdt_tools.button", text="11 - Stairs").handle = 'sca_shape_12'
+		col.operator("rdt_tools.button", text="13 - Half cylinder?").handle = 'sca_shape_13'
+
+class rdt_tools_rid_panel(bpy.types.Panel):
+	"""Creates a Panel in the Object properties window"""
+	bl_label = "RDT RID"
+	bl_idname = "OBJECT_PT_hello2"
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'TOOLS'
+	bl_context = "objectmode"
+	bl_category = 'RDT'
+
+	def draw(self, context):
+		layout = self.layout
+		split = layout.split()
+		obj = context.object
+
+		row = layout.row()
+		col = split.column(align=True)
+		col.operator("rdt_tools.button", text="Toogle data visibility").handle = 'toggle_vis_rid'
+		col.operator("rdt_tools.button", text="Toogle object names").handle = 'toggle_name_rid'
+		col.label(text="Create object")
+		#col = split.column(align=True)
+		col.operator("rdt_tools.button", text="Create camera set").handle = 'import_rbj'
+
+class rdt_tools_button(bpy.types.Operator):
+	bl_idname = "rdt_tools.button"
+	bl_label = ""
+	handle = bpy.props.StringProperty()
+
+	def execute(self, context):
+		
+		if "toggle_vis" in self.handle: 
+			#print('Toggle SCA object visibility')
+
+			for i in range(get_obj_count(self.handle[-3:].upper() + "_", 64)):
+				if bpy.data.objects.get(self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)) is not None:
+					if bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].hide == False:
+						bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].hide = True
+					else:
+						bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].hide = False
+
+		if "toggle_name" in self.handle: 
+			#print('Toggle SCA object visibility')
+
+			for i in range(get_obj_count(self.handle[-3:].upper() + "_", 64)):
+				if bpy.data.objects.get(self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)) is not None:
+					if bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].show_name == False:
+						bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].show_name = True
+					else:
+						bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].show_name = False
+		
+		if "toggle_transparency" in self.handle: 
+			#print('Toggle SCA object visibility')
+
+			for i in range(get_obj_count(self.handle[-3:].upper() + "_", 64)):
+				if bpy.data.objects.get(self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)) is not None:
+					if bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].show_transparent == False:
+						bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].show_transparent = True
+					else:
+						bpy.data.objects[self.handle[-3:].upper() + "_" + lib_tools.fix_id(i)].show_transparent = False
+		return{'FINISHED'}
+
 def menu_func_import(self, context):
 	self.layout.operator(rdt_import.bl_idname, text="BIO HAZARD Rooms (.rdt)")
-
 
 def menu_func_export(self, context):
 	self.layout.operator(rdt_export.bl_idname, text="BIO HAZARD Rooms (.rdt)")
@@ -1219,12 +1571,18 @@ def menu_func_export(self, context):
 def register():
 	bpy.utils.register_class(rdt_import)
 	bpy.utils.register_class(rdt_export)
+	bpy.utils.register_class(rdt_tools_rid_panel)
+	bpy.utils.register_class(rdt_tools_sca_panel)
+	bpy.utils.register_class(rdt_tools_button)
 	bpy.types.INFO_MT_file_import.append(menu_func_import)
 	bpy.types.INFO_MT_file_export.append(menu_func_export)
 
 def unregister():
 	bpy.utils.unregister_class(rdt_import)
 	bpy.utils.unregister_class(rdt_export)
+	bpy.utils.unregister_class(rdt_tools_rid_panel)
+	bpy.utils.unregister_class(rdt_tools_sca_panel)
+	bpy.utils.unregister_class(rdt_tools_button)
 	bpy.types.INFO_MT_file_import.remove(menu_func_import)
 	bpy.types.INFO_MT_file_import.remove(menu_func_export)
 
