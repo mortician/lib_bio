@@ -1,4 +1,6 @@
-lib_bio (Python powered multi purpose tool chain for modding the classic BIOHAZARD / RESIDENT EVIL games)
+lib_bio 
+
+A Python powered multi purpose tool chain for modding the classic BIOHAZARD / RESIDENT EVIL games)
 ============================================================================================================================================================================================================
 
 lib_bio is a python powered toolchain/library collection for the classic BIOHAZARD / RESIDENT EVIL games, it's goal is to support every file format of the classic games.
@@ -12,10 +14,10 @@ lib_bio will offer extraction/rebuilding of a range of common modding relevant f
 Supported games:
 ============================================================================================================================================================================================================
 - BIOHAZARD / RESIDENT EVIL 
-- BIOHAZARD DIRECTOR'S CUT / RESIDENT EVIL DIRECTOR'S CUT for PC & PS1
-- BIOHAZARD 2 PROTOTYPE / RESIDENT EVIL 2 PROTOTYPE for PC & PS1
-- BIOHAZARD 2 / RESIDENT EVIL 2 for PC & PS1
-- BIOHAZARD 3: LAST ESCAPE / RESIDENT EVIL 3: NEMESIS for PC & PS1
+- BIOHAZARD DIRECTOR'S CUT / RESIDENT EVIL DIRECTOR'S CUT
+- BIOHAZARD 2 PROTOTYPE / RESIDENT EVIL 2 PROTOTYPE 
+- BIOHAZARD 2 / RESIDENT EVIL 2
+- BIOHAZARD 3: LAST ESCAPE / RESIDENT EVIL 3: NEMESIS 
 
 
 How to use the Blender RDT plugin? (for Blender 2.79)
