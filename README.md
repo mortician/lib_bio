@@ -1,7 +1,5 @@
 lib_bio 
-
-A Python powered multi purpose tool chain for modding the classic BIOHAZARD / RESIDENT EVIL games)
-============================================================================================================================================================================================================
+===
 
 lib_bio is a python powered toolchain/library collection for the classic BIOHAZARD / RESIDENT EVIL games, it's goal is to support every file format of the classic games.
 
